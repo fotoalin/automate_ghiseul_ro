@@ -19,7 +19,7 @@ GHISEUL_URL = os.getenv("GHISEULRO_URL")
 USERNAME = os.getenv("GHISEULRO_USERNAME")
 PASSWORD = os.getenv("GHISEULRO_PASSWORD")
 DOWNLOAD_DIR = BASE_DIR / "docs"  # Set the docs folder as the download folder
-
+WAIT = 20
 # Ensure the docs folder exists
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -33,27 +33,29 @@ driver = webdriver.Chrome(options=options)
 
 def login(driver):
     driver.get(GHISEUL_URL)
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "username")))
+    WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.ID, "username")))
     driver.find_element(By.ID, "username").send_keys(USERNAME)
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "passwordT")))  # Wait for the temporary password field
+    WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.ID, "passwordT")))  # Wait for the temporary password field
     password_temp = driver.find_element(By.ID, "passwordT")
     password_temp.click()  # Focus on the temporary password field to trigger the change
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "passwordP")))  # Wait for the actual password field
+    WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.ID, "passwordP")))  # Wait for the actual password field
     driver.find_element(By.ID, "passwordP").send_keys(PASSWORD)
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='submit']")))  # Wait for the submit button
+    WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='submit']")))  # Wait for the submit button
     driver.find_element(By.CSS_SELECTOR, "input[type='submit']").click()
 
 
 def verify_login(driver):
-    element = WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.XPATH, "//h3[contains(@class, 'media-heading')]")))
-    if "MOROSANU" in element.text:
-        driver.get(f"{GHISEUL_URL}/plati-anterioare/")
-    else:
-        raise Exception("Login verification failed: 'MOROSANU' not found in the element text")
+    payments_path = "plati-anterioare"
+    try:
+        WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.XPATH, f"//a[contains(@href, '{payments_path}')]")))
+        logging.info("Login successful")
+        driver.get(f"{GHISEUL_URL}/{payments_path}")
+    except Exception as e:
+        raise Exception(f"Login verification failed: '{payments_path}' not found on page. {e}")
 
 
 def download_receipts(driver):
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CLASS_NAME, "table.table-payments")))
+    WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.CLASS_NAME, "table.table-payments")))
     rows = driver.find_elements(By.XPATH, "//table[@class='table table-payments']//tr")
 
     for row in rows:
@@ -69,7 +71,7 @@ def process_row(row):
         return  # Skip if no cells (e.g., header or empty rows)
 
     referinta = cells[0].text.strip()
-    suma = cells[1].text.strip()
+    suma = cells[1].text.strip().replace(" ", "")
     date = cells[2].text.strip()
     explicatie = cells[3].text.strip()
 
@@ -100,4 +102,5 @@ try:
     verify_login(driver)
     download_receipts(driver)
 finally:
+    logging.info("Done. Closing browser.")
     driver.quit()
