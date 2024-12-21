@@ -24,7 +24,7 @@ DOWNLOAD_DIR = BASE_DIR / "docs"  # Set the docs folder as the download folder
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]')
 
 # Set up Selenium
 options = webdriver.ChromeOptions()
