@@ -1,3 +1,16 @@
+# Description: A script to download receipts from the Ghiseul.ro website.
+# Author: Alin Morosanu
+# Date: 2024-12-21
+# Version: 1.0
+
+"""
+This script logs into the Ghiseul.ro website and downloads all receipts for 
+payments made to the SNEP system (Sistemul Național Electronic de Plata).
+
+The script uses Selenium to automate the login process and download the receipts.
+It also uses the requests library to download the PDF files.
+"""
+
 import logging
 import os
 from pathlib import Path
