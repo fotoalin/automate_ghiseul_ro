@@ -71,14 +71,19 @@ def download_receipts(driver):
     WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.CLASS_NAME, "table.table-payments")))
     rows = driver.find_elements(By.XPATH, "//table[@class='table table-payments']//tr")
 
+    # Create a requests session and set cookies from the Selenium driver
+    session = requests.Session()
+    for cookie in driver.get_cookies():
+        session.cookies.set(cookie['name'], cookie['value'])
+
     for row in rows:
         try:
-            process_row(row)
+            process_row(row, session)
         except Exception as e:
             logging.error(f"Error processing row: {e}")
 
 
-def process_row(row):
+def process_row(row, session):
     cells = row.find_elements(By.TAG_NAME, "td")
     if not cells:
         return  # Skip if no cells (e.g., header or empty rows)
@@ -97,17 +102,45 @@ def process_row(row):
     new_filename = f"dovadaSNEP{referinta}_{explicatie}_{suma}_{formatted_date}.pdf"
     new_filepath = os.path.join(DOWNLOAD_DIR, new_filename)
 
+    logging.info(f"Saving file to: {new_filepath}")  # Log the file path
+
     if os.path.exists(new_filepath):
         logging.info(f"File {new_filename} already exists. Skipping download.")
         return
 
-    response = requests.get(download_url)
-    if response.status_code == 200:
+    try:
+        response = session.get(download_url, stream=True)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Log the response URL and status code
+        logging.info(f"Response URL: {response.url}")
+        logging.info(f"Response Status Code: {response.status_code}")
+
+        # Log the content type of the response
+        content_type = response.headers.get('Content-Type')
+        logging.info(f"Content-Type of the response: {content_type}")
+
+        if 'application/pdf' not in content_type:
+            logging.error(f"Expected a PDF file but got {content_type}. Skipping download.")
+            return
+
         with open(new_filepath, "wb") as file:
-            file.write(response.content)
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
         logging.info(f"Downloaded and saved as {new_filename}")
-    else:
-        logging.error(f"Failed to download file for {referinta}. HTTP status: {response.status_code}")
+
+        # Verify the downloaded file is a valid PDF by checking the header
+        with open(new_filepath, "rb") as file:
+            header = file.read(4)
+            if header != b'%PDF':
+                logging.error(f"Downloaded file {new_filename} is not a valid PDF.")
+                os.remove(new_filepath)
+            else:
+                logging.info(f"Verified {new_filename} is a valid PDF.")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Failed to download file for {referinta}. Error: {e}")
+    except Exception as e:
+        logging.error(f"An error occurred while processing the file {new_filename}. Error: {e}")
 
 
 try:
