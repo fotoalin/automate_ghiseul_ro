@@ -13,6 +13,7 @@ It also uses the requests library to download the PDF files.
 
 import logging
 import os
+import time
 from pathlib import Path
 
 import requests
@@ -32,20 +33,23 @@ GHISEUL_URL = os.getenv("GHISEULRO_URL")
 USERNAME = os.getenv("GHISEULRO_USERNAME")
 PASSWORD = os.getenv("GHISEULRO_PASSWORD")
 DOWNLOAD_DIR = BASE_DIR / "docs"  # Set the docs folder as the download folder
-WAIT = 20
+WAIT = 30
 # Ensure the docs folder exists
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]')
 
-# Set up Selenium
-options = webdriver.ChromeOptions()
-driver = webdriver.Chrome(options=options)
+# options = webdriver.ChromeOptions()
+# driver = webdriver.Chrome(options=options)
+
+options = webdriver.FirefoxOptions()
+driver = webdriver.Firefox(options=options)
 
 
 def login(driver):
     driver.get(GHISEUL_URL)
+    # time.sleep(60)  # Wait for the page to load
     WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.ID, "username")))
     driver.find_element(By.ID, "username").send_keys(USERNAME)
     WebDriverWait(driver, WAIT).until(EC.presence_of_element_located((By.ID, "passwordT")))  # Wait for the temporary password field
